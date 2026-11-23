@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="用同一张推箱子棋盘，比较 BFS 和大模型的走棋策略。">
+  <title>推箱子实验室</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="container masthead-inner">
+      <div class="brand-mark" aria-hidden="true"><span></span></div>
+      <div>
+        <h1>推箱子实验室</h1>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="workspace">
+      <section class="panel game" aria-labelledby="level-title">
+        <div class="game-top">
+          <div>
+            <p class="eyebrow" id="level-number">关卡</p>
+            <h2 id="level-title">正在加载…</h2>
+            <p class="level-description" id="level-description"></p>
+          </div>
+          <nav class="levels" id="levels" aria-label="选择关卡"></nav>
+        </div>
+
+        <div class="stage">
+          <canvas id="board" class="board" role="img" aria-label="推箱子棋盘"></canvas>
+        </div>
+
+        <div class="game-info">
+          <ul class="legend" aria-label="棋盘图例">
+            <li><span class="marker player" aria-hidden="true"></span>玩家</li>
+            <li><span class="marker box" aria-hidden="true"></span>箱子</li>
+            <li><span class="marker target" aria-hidden="true"></span>目标</li>
+            <li><span class="marker filled" aria-hidden="true"></span>已归位</li>
+          </ul>
+          <div class="game-buttons">
+            <span class="feedback" id="feedback" role="status"></span>
+            <button class="button button-low" id="restart" type="button">重开</button>
+          </div>
+        </div>
+
+        <dl class="counters">
+          <div><dt>已归位</dt><dd id="filled">—</dd></div>
+          <div><dt>有效步数</dt><dd id="moves">—</dd></div>
+          <div><dt>推箱次数</dt><dd id="pushes">—</dd></div>
+          <div><dt>被阻挡</dt><dd id="blocked">—</dd></div>
+        </dl>
+      </section>
+
+      <aside class="sidebar">
+        <section class="panel side-panel" aria-labelledby="setup-title">
+          <div class="section-head">
+            <h2 id="setup-title">走棋设置</h2>
+            <span class="mode-indicator" id="mode-indicator"></span>
+          </div>
+          <div class="modes" aria-label="走棋模式">
+            <button type="button" data-mode="manual" aria-pressed="true">手动</button>
+            <button type="button" data-mode="bfs" aria-pressed="false">BFS</button>
+            <button type="button" data-mode="model" aria-pressed="false">大模型</button>
+          </div>
+
+          <form id="model-form" hidden>
+            <label for="model">模型</label>
+            <select id="model" required></select>
+            <div class="form-row">
+              <div>
+                <label for="observation">棋盘输入</label>
+                <select id="observation">
+                  <option value="text">字符</option>
+                  <option value="image">截图</option>
+                </select>
+              </div>
+              <div>
+                <label for="horizon">规划步数</label>
+                <select id="horizon" disabled>
+                  <option>2</option><option>3</option><option selected>4</option>
+                  <option>5</option><option>6</option><option>7</option><option>8</option>
+                </select>
+              </div>
+            </div>
+            <label for="strategy">策略</label>
+            <select id="strategy">
+              <option value="single">单步决策</option>
+              <option value="plan_one">多步规划，走一步</option>
+              <option value="plan_all">多步规划，走整段</option>
+            </select>
+            <label class="check-option">
+              <input type="checkbox" id="deadlock-guard">
+              死锁预演
+            </label>
+            <p class="setup-hint" id="model-hint" role="status"></p>
+            <button class="button button-primary full-width" id="start-model" type="submit">用此设置开局</button>
+          </form>
+
+          <div id="manual-controls" class="manual-controls">
+            <div class="directions" aria-label="手动方向">
+              <button type="button" data-direction="up" aria-label="上移">上</button>
+              <button type="button" data-direction="left" aria-label="左移">左</button>
+              <button type="button" data-direction="down" aria-label="下移">下</button>
+              <button type="button" data-direction="right" aria-label="右移">右</button>
+            </div>
+            <p>也可以用键盘方向键走棋。</p>
+          </div>
+          <div id="auto-controls" class="auto-controls" hidden>
+            <button class="button button-primary" id="continuous" type="button">连续运行</button>
+            <button class="button" id="step" type="button">单步</button>
+            <button class="button" id="end" type="button">结束本局</button>
+          </div>
+        </section>
+
+        <section class="panel side-panel trace" aria-labelledby="trace-title">
+          <div class="section-head">
+            <h2 id="trace-title">走棋记录</h2>
+            <span id="trace-count" class="trace-count"></span>
+          </div>
+          <p class="empty" id="empty-trace">走棋后，可以在这里回看每一步。</p>
+          <ol class="timeline" id="timeline"></ol>
+          <div class="trace-detail" id="trace-detail" hidden></div>
+          <div class="replay-controls" id="replay-controls" hidden>
+            <button type="button" class="button button-low" id="prev-frame">上一步</button>
+            <button type="button" class="button button-low" id="next-frame">下一步</button>
+            <button type="button" class="button button-low return" id="live">返回当前</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <section class="panel results" aria-labelledby="results-title">
+      <div class="section-head">
+        <h2 id="results-title">实验对照</h2>
+        <span class="trace-count" id="result-count"></span>
+      </div>
+      <p id="empty-results" class="empty">结束一局后，结果会留在这里。用同一关卡比较模型、棋盘输入或走棋策略。</p>
+      <div id="result-table" class="table-wrap" hidden>
+        <table>
+          <thead>
+            <tr><th scope="col">关卡</th><th scope="col">玩法</th><th scope="col">策略</th><th scope="col">棋盘</th><th scope="col">结果</th><th scope="col">步数</th><th scope="col">推箱</th><th scope="col">阻挡</th><th scope="col">调用</th><th scope="col">等待</th><th scope="col">Token</th><th scope="col">回看</th></tr>
+          </thead>
+          <tbody id="result-rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

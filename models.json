@@ -1,0 +1,7 @@
+[
+  {"provider": "openrouter", "model": "openai/gpt-4.1-mini", "label": "GPT-4.1 mini", "image": true},
+  {"provider": "openrouter", "model": "google/gemini-2.5-flash", "label": "Gemini 2.5 Flash", "image": true},
+  {"provider": "openrouter", "model": "deepseek/deepseek-v4.1-flash-1017", "label": "DeepSeek V4.1 Flash 1017", "image": true},
+  {"provider": "openrouter", "model": "typesafe/jev-1.14", "label": "TypeSafe Jev 1.14（Decision）", "image": true, "protocol": "decisions"},
+  {"provider": "openai", "model": "gpt-4.1-mini", "label": "GPT-4.1 mini", "image": true}
+]
